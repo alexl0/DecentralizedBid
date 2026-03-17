@@ -1,3 +1,7 @@
+# DecentralizedBid
+A decentralized bidding application built on BSC Testnet, enabling transparent and trustless auctions through smart contracts.
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
 
 ## Getting Started
