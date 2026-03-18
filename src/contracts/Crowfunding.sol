@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 contract Crowdfunding {
-    address public owner = 0x62f8553DB95Db4Fd50cF0ec49d3d229a66C5C7C2;
+    address public owner = 0x4427fd44874e7b90Ab34EB43809AbFe70682549e; // Importante, poner la nuestra de metamask
     uint256 public goal;
     uint256 public deadline;
     uint256 public totalContribution;
