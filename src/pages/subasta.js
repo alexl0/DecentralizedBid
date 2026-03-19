@@ -53,7 +53,7 @@ export default function SubastaPage() {
 
       const chainId = await provider.request({ method: "eth_chainId" });
       if (chainId !== "0x61") {
-        alert(`Red incorrecta. MetaMask esta en chainId ${parseInt(chainId, 16)}. Cambia a BSC Testnet (97).`);
+        alert(`Red incorrecta. MetaMask esta en chainId ${parseInt(chainId, 16)}. Cambia a BSC Testnet (97). Si estas utilizando Metamask, entrar en ajustes -> conexiones de Dapp -> localhost:3000 (o la url de esta app) -> utilizar sus redes habilitadas (editar) -> desactivar todas las redes menos la de tBNB`);
         return;
       }
 

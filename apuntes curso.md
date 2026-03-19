@@ -227,6 +227,9 @@ function listarUsuarios() external view returns (address[] memory, uint256[] mem
     }
     return (usuarios, saldos);
 }
+# 3 Ampliación Material adicional - no obligatorio - para crear mejores aplicaciones web
+
+## 3.1 Despliegue de aplicación web firebase
 
 # 4 Transfencias y pagos en token nativo de la red
 
