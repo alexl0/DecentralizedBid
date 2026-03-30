@@ -4,11 +4,14 @@ import { Contract, ethers } from "ethers";
 
 // Sustituye esta direccion por la de tu SubastaSimple desplegada en Remix.
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000";
+// RPC pública para leer eventos de puja sin depender de planes de API de exploradores.
+const EVENTS_RPC_URL = process.env.NEXT_PUBLIC_EVENTS_RPC_URL || "https://bsc-testnet.publicnode.com";
 
 const SUBASTA_ABI = [
   "function owner() view returns (address)",
   "function producto() view returns (string)",
   "function endTime() view returns (uint256)",
+  "function extensionWindow() view returns (uint256)",
   "function highestBidder() view returns (address)",
   "function highestBid() view returns (uint256)",
   "function fondosGanadorRetirados() view returns (bool)",
@@ -20,6 +23,7 @@ const SUBASTA_ABI = [
   "function retirarFondosGanador()",
   "event NuevaPuja(address indexed bidder, uint256 amount)",
   "event FondosGanadorRetirados(address indexed to, uint256 amount)",
+  "event SubastaExtendida(uint256 nuevoEndTime)",
 ];
 
 export default function SubastaPage() {
@@ -32,10 +36,13 @@ export default function SubastaPage() {
   const [highestBidder, setHighestBidder] = useState("");
   const [miPuja, setMiPuja] = useState("0");
   const [endTime, setEndTime] = useState(0);
+  const [extensionWindow, setExtensionWindow] = useState(0);
   const [ahora, setAhora] = useState(Math.floor(Date.now() / 1000));
   const [finalizada, setFinalizada] = useState(false);
   const [ganador, setGanador] = useState("");
   const [fondosGanadorRetirados, setFondosGanadorRetirados] = useState(false);
+  const [historialPujas, setHistorialPujas] = useState([]);
+  const [cargandoPujas, setCargandoPujas] = useState(false);
 
   const [montoBNB, setMontoBNB] = useState("");
   const [mensaje, setMensaje] = useState({ tipo: "", texto: "" });
@@ -120,6 +127,59 @@ export default function SubastaPage() {
     await cargarEstado(account);
   };
 
+  const cargarHistorialPujas = async () => {
+    if (!contractRef.current) return;
+
+    try {
+      setCargandoPujas(true);
+
+      // Si defines el bloque de despliegue, la consulta será más rápida que buscando desde 0.
+      const configuredBlock = Number(process.env.NEXT_PUBLIC_CONTRACT_DEPLOY_BLOCK || 0);
+      const bloqueInicio = Number.isFinite(configuredBlock) && configuredBlock >= 0 ? configuredBlock : 0;
+
+      // Topic0 del evento NuevaPuja(address,uint256)
+      const topic0 = ethers.utils.id("NuevaPuja(address,uint256)");
+
+      const provider = new ethers.providers.JsonRpcProvider(EVENTS_RPC_URL);
+      const ultimoBloque = await provider.getBlockNumber();
+      const interfaz = new ethers.utils.Interface(["event NuevaPuja(address indexed bidder, uint256 amount)"]);
+
+      const TAMANO_TRAMO = 3000;
+      let desde = bloqueInicio;
+      let logs = [];
+
+      while (desde <= ultimoBloque) {
+        const hasta = Math.min(desde + TAMANO_TRAMO - 1, ultimoBloque);
+        const lote = await provider.getLogs({
+          address: CONTRACT_ADDRESS,
+          fromBlock: desde,
+          toBlock: hasta,
+          topics: [topic0],
+        });
+        logs = logs.concat(lote);
+        desde = hasta + 1;
+      }
+
+      const lista = logs
+        .map((log) => {
+          const parsed = interfaz.parseLog(log);
+          return {
+            bidder: parsed.args.bidder,
+            amount: ethers.utils.formatEther(parsed.args.amount),
+            txHash: log.transactionHash,
+          };
+        })
+        .reverse();
+
+      setHistorialPujas(lista);
+    } catch (error) {
+      console.error("Error al cargar historial de pujas:", error);
+      mostrarMensaje("warning", obtenerMensajeError(error, "No se pudo cargar el historial de pujas."));
+    } finally {
+      setCargandoPujas(false);
+    }
+  };
+
   const configureBlockchain = async () => {
     try {
       let provider = await detectEthereumProvider();
@@ -164,6 +224,7 @@ export default function SubastaPage() {
       const [
         productoValue,
         endTimeValue,
+        extensionWindowValue,
         highestBidValue,
         highestBidderValue,
         miPujaWei,
@@ -171,6 +232,7 @@ export default function SubastaPage() {
       ] = await Promise.all([
         contractRef.current.producto(),
         contractRef.current.endTime(),
+        contractRef.current.extensionWindow(),
         contractRef.current.highestBid(),
         contractRef.current.highestBidder(),
         cuentaActiva ? contractRef.current.bids(cuentaActiva) : Promise.resolve(ethers.BigNumber.from(0)),
@@ -179,6 +241,7 @@ export default function SubastaPage() {
 
       setProducto(productoValue);
       setEndTime(endTimeValue.toNumber());
+      setExtensionWindow(extensionWindowValue.toNumber());
       setHighestBid(ethers.utils.formatEther(highestBidValue));
       setHighestBidder(highestBidderValue);
       setMiPuja(ethers.utils.formatEther(miPujaWei));
@@ -197,6 +260,8 @@ export default function SubastaPage() {
         setGanador("");
         setFondosGanadorRetirados(false);
       }
+
+      await cargarHistorialPujas();
     } catch (error) {
       console.error("Error al cargar estado:", error);
       mostrarMensaje("danger", obtenerMensajeError(error, "Error al cargar estado de la subasta."));
@@ -333,6 +398,7 @@ export default function SubastaPage() {
           <p className="mb-1"><strong>Mejor postor:</strong> {highestBidder || "-"}</p>
           <p className="mb-1"><strong>Mi puja:</strong> {miPuja} BNB</p>
           <p className="mb-1"><strong>Finaliza en:</strong> {endTime ? new Date(endTime * 1000).toLocaleString() : "-"}</p>
+          <p className="mb-1"><strong>Ventana anti-sniping:</strong> {Math.floor(extensionWindow / 60)} min</p>
           <p className="mb-3"><strong>Tiempo restante:</strong> {tiempoRestanteTexto()}</p>
           <button className="btn btn-outline-secondary btn-sm" onClick={() => cargarEstado()}>
             Recargar estado
@@ -401,6 +467,46 @@ export default function SubastaPage() {
               <strong>Ganador:</strong> {ganador}
             </p>
           )}
+        </div>
+      </div>
+
+      <div className="card mt-3">
+        <div className="card-body">
+          <div className="d-flex justify-content-between align-items-center mb-2">
+            <h2 className="h5 card-title mb-0">Historial de pujas</h2>
+            <button className="btn btn-outline-secondary btn-sm" onClick={cargarHistorialPujas}>
+              Recargar pujas
+            </button>
+          </div>
+
+          {cargandoPujas ? <p className="mb-0">Cargando pujas...</p> : null}
+
+          {!cargandoPujas && historialPujas.length === 0 ? (
+            <p className="mb-0">Aun no hay pujas registradas.</p>
+          ) : null}
+
+          {!cargandoPujas && historialPujas.length > 0 ? (
+            <div className="table-responsive">
+              <table className="table table-sm table-striped align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Direccion</th>
+                    <th>Importe (BNB)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historialPujas.map((puja, index) => (
+                    <tr key={puja.txHash + index}>
+                      <td>{index + 1}</td>
+                      <td style={{ fontFamily: "monospace", fontSize: "0.85rem" }}>{puja.bidder}</td>
+                      <td>{puja.amount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

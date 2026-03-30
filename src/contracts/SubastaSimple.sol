@@ -7,6 +7,7 @@ contract SubastaSimple {
     address public owner;
     string public producto;
     uint256 public endTime;
+    uint256 public extensionWindow;
 
     address public highestBidder;
     uint256 public highestBid;
@@ -16,12 +17,14 @@ contract SubastaSimple {
 
     event NuevaPuja(address indexed bidder, uint256 amount);
     event FondosGanadorRetirados(address indexed to, uint256 amount);
+    event SubastaExtendida(uint256 nuevoEndTime);
 
     constructor(string memory _producto, uint256 _duracionMinutos) {
         require(_duracionMinutos > 0, "Duracion invalida");
         owner = msg.sender;
         producto = _producto;
         endTime = block.timestamp + (_duracionMinutos * 1 minutes);
+        extensionWindow = 2 minutes;
     }
 
     function pujar() external payable {
@@ -29,6 +32,12 @@ contract SubastaSimple {
         require(msg.sender != owner, "El vendedor no puede pujar");
         require(bids[msg.sender] == 0, "Solo una puja por usuario");
         require(msg.value > highestBid, "La puja debe superar la actual");
+
+        // Anti-sniping: si entra una puja en la ventana final, extendemos el cierre.
+        if (endTime - block.timestamp <= extensionWindow) {
+            endTime += extensionWindow;
+            emit SubastaExtendida(endTime);
+        }
 
         bids[msg.sender] = msg.value;
         highestBid = msg.value;

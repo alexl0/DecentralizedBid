@@ -12,3 +12,6 @@ Ahora mismo está todo en subasta.js
 ## Hacer .env para variables de entorno
 Como la dirección del contrato.
 
+## Workflow de trabajo
+Hacer un workflow de trabajo con una vm y agentes claude que permita que tengan acceso a todo (consola de desarrollador del navegador, consola de ejecución de node, etc) para evitar trabas y que puedan desarrollar viendo todos los errores, etc.
+
