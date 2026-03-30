@@ -13,3 +13,6 @@ Luego, se ha ejecutado:
 
 Cada vez que se hagan cambios:
 `npm run build`
+
+Si se ha añadido algún paquete (por ejemplo bootstrap):
+`npm install`

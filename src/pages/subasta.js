@@ -3,7 +3,7 @@ import detectEthereumProvider from "@metamask/detect-provider";
 import { Contract, ethers } from "ethers";
 
 // Sustituye esta direccion por la de tu SubastaSimple desplegada en Remix.
-const CONTRACT_ADDRESS = "0x5F365b80778A4C9B45D8325F02547E095686CF82";
+const CONTRACT_ADDRESS = "0xc5050909Bd04bB01529327C553Ec7D511D0260bE";
 
 const SUBASTA_ABI = [
   "function producto() view returns (string)",
