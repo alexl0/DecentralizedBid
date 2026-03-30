@@ -26,6 +26,7 @@ contract SubastaSimple {
 
     function pujar() external payable {
         require(block.timestamp < endTime, "Subasta finalizada");
+        require(msg.sender != owner, "El vendedor no puede pujar");
         require(bids[msg.sender] == 0, "Solo una puja por usuario");
         require(msg.value > highestBid, "La puja debe superar la actual");
 

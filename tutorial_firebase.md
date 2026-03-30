@@ -12,7 +12,12 @@ Luego, se ha ejecutado:
 
 
 Cada vez que se hagan cambios:
-`npm run build`
+```
+npm run build
+firebase deploy
+```
 
 Si se ha añadido algún paquete (por ejemplo bootstrap):
-`npm install`
+```
+npm install
+```

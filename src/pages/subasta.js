@@ -3,51 +3,85 @@ import detectEthereumProvider from "@metamask/detect-provider";
 import { Contract, ethers } from "ethers";
 
 // Sustituye esta direccion por la de tu SubastaSimple desplegada en Remix.
-const CONTRACT_ADDRESS = "0xc5050909Bd04bB01529327C553Ec7D511D0260bE";
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x0000000000000000000000000000000000000000";
 
 const SUBASTA_ABI = [
+  "function owner() view returns (address)",
   "function producto() view returns (string)",
   "function endTime() view returns (uint256)",
   "function highestBidder() view returns (address)",
   "function highestBid() view returns (uint256)",
+  "function fondosGanadorRetirados() view returns (bool)",
   "function bids(address) view returns (uint256)",
   "function subastaFinalizada() view returns (bool)",
   "function ganador() view returns (address)",
   "function pujar() payable",
   "function retirarNoGanador()",
+  "function retirarFondosGanador()",
   "event NuevaPuja(address indexed bidder, uint256 amount)",
+  "event FondosGanadorRetirados(address indexed to, uint256 amount)",
 ];
 
 export default function SubastaPage() {
   const contractRef = useRef(null);
 
   const [cuenta, setCuenta] = useState("");
+  const [owner, setOwner] = useState("");
   const [producto, setProducto] = useState("");
   const [highestBid, setHighestBid] = useState("0");
   const [highestBidder, setHighestBidder] = useState("");
   const [miPuja, setMiPuja] = useState("0");
+  const [endTime, setEndTime] = useState(0);
+  const [ahora, setAhora] = useState(Math.floor(Date.now() / 1000));
   const [finalizada, setFinalizada] = useState(false);
   const [ganador, setGanador] = useState("");
+  const [fondosGanadorRetirados, setFondosGanadorRetirados] = useState(false);
 
   const [montoBNB, setMontoBNB] = useState("");
   const [mensaje, setMensaje] = useState({ tipo: "", texto: "" });
+  const esOwner = owner && cuenta && owner.toLowerCase() === cuenta.toLowerCase();
 
   const mostrarMensaje = (tipo, texto) => setMensaje({ tipo, texto });
 
+  const limpiarMensajeRevert = (rawMessage) => {
+    if (!rawMessage || !rawMessage.includes("execution reverted")) return null;
+
+    let parte = rawMessage.split("execution reverted:")[1] || rawMessage.split("execution reverted")[1] || "";
+    parte = parte.trim();
+    parte = parte.replace(/: 0x[0-9a-fA-F]+$/, "").trim();
+
+    if (!parte) return "Transaccion revertida";
+    return parte.startsWith("Error:") ? parte : `Error: ${parte}`;
+  };
+
   const obtenerMensajeError = (error, fallback) => {
-    // Intentar extraer el mensaje de varias formas
+    const revertFromReason = limpiarMensajeRevert(error?.reason);
+    if (revertFromReason) return revertFromReason;
+
+    const revertFromNested = limpiarMensajeRevert(error?.error?.message);
+    if (revertFromNested) return revertFromNested;
+
+    const revertFromData = limpiarMensajeRevert(error?.data?.message);
+    if (revertFromData) return revertFromData;
+
     if (error?.reason) return error.reason;
     if (error?.error?.message) return error.error.message;
     if (error?.data?.message) return error.data.message;
-    
-    // Si el error es un string con formato Solidity revert
-    if (error?.message && error.message.includes("execution reverted:")) {
-      const parte = error.message.split("execution reverted:")[1];
-      if (parte) return "Error: " + parte.trim().split(";")[0];
-    }
-    
+    if (error?.message) return error.message;
+
     // Fallback genérico
     return fallback;
+  };
+
+  const tiempoRestanteTexto = () => {
+    if (!endTime) return "-";
+    const restante = endTime - ahora;
+    if (restante <= 0) return "Finalizada";
+
+    const horas = Math.floor(restante / 3600);
+    const minutos = Math.floor((restante % 3600) / 60);
+    const segundos = restante % 60;
+    return `${horas}h ${minutos}m ${segundos}s`;
   };
 
   const esMontoValido = (valor) => {
@@ -71,6 +105,14 @@ export default function SubastaPage() {
 
   useEffect(() => {
     init();
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setAhora(Math.floor(Date.now() / 1000));
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const init = async () => {
@@ -115,15 +157,20 @@ export default function SubastaPage() {
     if (!contractRef.current) return;
 
     try {
+      const ownerValue = await contractRef.current.owner();
+      setOwner(ownerValue);
+
       const cuentaActiva = account || cuenta;
       const [
         productoValue,
+        endTimeValue,
         highestBidValue,
         highestBidderValue,
         miPujaWei,
         finalizadaValue,
       ] = await Promise.all([
         contractRef.current.producto(),
+        contractRef.current.endTime(),
         contractRef.current.highestBid(),
         contractRef.current.highestBidder(),
         cuentaActiva ? contractRef.current.bids(cuentaActiva) : Promise.resolve(ethers.BigNumber.from(0)),
@@ -131,6 +178,7 @@ export default function SubastaPage() {
       ]);
 
       setProducto(productoValue);
+      setEndTime(endTimeValue.toNumber());
       setHighestBid(ethers.utils.formatEther(highestBidValue));
       setHighestBidder(highestBidderValue);
       setMiPuja(ethers.utils.formatEther(miPujaWei));
@@ -140,9 +188,14 @@ export default function SubastaPage() {
         try {
           const g = await contractRef.current.ganador();
           setGanador(g);
+          const fondosRetiradosValue = await contractRef.current.fondosGanadorRetirados();
+          setFondosGanadorRetirados(fondosRetiradosValue);
         } catch {
           setGanador("");
         }
+      } else {
+        setGanador("");
+        setFondosGanadorRetirados(false);
       }
     } catch (error) {
       console.error("Error al cargar estado:", error);
@@ -150,8 +203,32 @@ export default function SubastaPage() {
     }
   };
 
+  const retirarFondosGanador = async () => {
+    if (!contractRef.current) return;
+
+    if (cuenta.toLowerCase() !== owner.toLowerCase()) {
+      mostrarMensaje("danger", "Solo el vendedor puede retirar los fondos del ganador.");
+      return;
+    }
+
+    try {
+      const tx = await contractRef.current.retirarFondosGanador();
+      mostrarMensaje("info", "Retirada de fondos enviada. Esperando confirmacion...");
+      await tx.wait();
+      await cargarEstado();
+      mostrarMensaje("success", "Fondos del ganador retirados correctamente a tu cartera.");
+    } catch (error) {
+      console.error("Error al retirar fondos del ganador:", error);
+      mostrarMensaje("danger", obtenerMensajeError(error, "Error al retirar fondos del ganador."));
+    }
+  };
+
   const pujar = async () => {
     if (!contractRef.current) return;
+    if (esOwner) {
+      mostrarMensaje("warning", "El vendedor no puede pujar en su propia subasta.");
+      return;
+    }
     if (finalizada) {
       mostrarMensaje("warning", "La subasta ya ha finalizado. No se admiten mas pujas.");
       return;
@@ -178,6 +255,18 @@ export default function SubastaPage() {
 
   const retirar = async () => {
     if (!contractRef.current) return;
+    if (!finalizada) {
+      mostrarMensaje("warning", "La subasta aun no termina.");
+      return;
+    }
+    if (esOwner) {
+      mostrarMensaje("warning", "El vendedor no usa este boton. Debe retirar fondos del ganador.");
+      return;
+    }
+    if (Number(miPuja) <= 0) {
+      mostrarMensaje("warning", "No has pujado o ya retiraste tus fondos.");
+      return;
+    }
 
     try {
       const tx = await contractRef.current.retirarNoGanador();
@@ -231,6 +320,7 @@ export default function SubastaPage() {
         <div className="card-body">
           <h2 className="h5 card-title">Conexion</h2>
           <p className="mb-1"><strong>Cuenta:</strong> {cuenta || "-"}</p>
+          <p className="mb-1"><strong>Owner:</strong> {owner || "-"}</p>
           <p className="mb-0"><strong>Contrato:</strong> {CONTRACT_ADDRESS}</p>
         </div>
       </div>
@@ -242,7 +332,8 @@ export default function SubastaPage() {
           <p className="mb-1"><strong>Puja mas alta:</strong> {highestBid} BNB</p>
           <p className="mb-1"><strong>Mejor postor:</strong> {highestBidder || "-"}</p>
           <p className="mb-1"><strong>Mi puja:</strong> {miPuja} BNB</p>
-          <p className="mb-3"><strong>Finalizada:</strong> {finalizada ? "Si" : "No"}</p>
+          <p className="mb-1"><strong>Finaliza en:</strong> {endTime ? new Date(endTime * 1000).toLocaleString() : "-"}</p>
+          <p className="mb-3"><strong>Tiempo restante:</strong> {tiempoRestanteTexto()}</p>
           <button className="btn btn-outline-secondary btn-sm" onClick={() => cargarEstado()}>
             Recargar estado
           </button>
@@ -261,7 +352,7 @@ export default function SubastaPage() {
                 value={montoBNB}
                 onChange={(e) => onChangeMonto(e.target.value)}
                 placeholder="Ej: 0.01"
-                disabled={finalizada}
+                disabled={finalizada || esOwner}
               />
               <small className="text-muted">Solo numeros decimales en BNB.</small>
             </div>
@@ -269,7 +360,7 @@ export default function SubastaPage() {
               <button
                 className="btn btn-primary"
                 onClick={pujar}
-                disabled={finalizada || !esMontoValido(montoBNB)}
+                disabled={finalizada || esOwner || !esMontoValido(montoBNB)}
               >
                 Enviar puja
               </button>
@@ -290,10 +381,19 @@ export default function SubastaPage() {
                 Eres el ganador. El vendedor se encargara de enviar el producto.
               </div>
             ) : (
-              <button className="btn btn-outline-success" onClick={retirar} disabled={finalizada && miPuja === "0"}>
+              <button className="btn btn-outline-success" onClick={retirar} disabled={!finalizada || esOwner || Number(miPuja) <= 0}>
                 Retirar fondos (no ganador)
               </button>
             )}
+            {finalizada && owner && cuenta.toLowerCase() === owner.toLowerCase() ? (
+              <button
+                className="btn btn-warning"
+                onClick={retirarFondosGanador}
+                disabled={fondosGanadorRetirados || Number(highestBid) <= 0}
+              >
+                {fondosGanadorRetirados ? "Fondos ya retirados" : "Retirar fondos ganador (vendedor)"}
+              </button>
+            ) : null}
           </div>
 
           {ganador && (
