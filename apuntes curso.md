@@ -412,3 +412,24 @@ con parámetros: 100000000000, 2
 
 ## 4.14 Conexión al contrato
 
+
+
+
+
+
+
+
+
+# Probando app definitiva de subastas
+- Primer contrato (subasta finalizada):
+0x4427fd44874e7b90Ab34EB43809AbFe70682549e
+
+- Segundo contrato:
+
+
+
+# Cosas importantes:
+Ejecutar con:
+```
+npm.cmd run build
+```
