@@ -1,0 +1,76 @@
+.page {
+  min-height: 100vh;
+  background: linear-gradient(165deg, #f4f8ff 0%, #ffffff 35%, #fff4e7 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.orbA,
+.orbB {
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: 999px;
+  filter: blur(58px);
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.orbA {
+  top: -160px;
+  left: -110px;
+  background: #3284ff;
+}
+
+.orbB {
+  right: -120px;
+  bottom: -180px;
+  background: #ff9842;
+}
+
+.hero {
+  padding-top: 72px;
+  padding-bottom: 40px;
+}
+
+.badgeTitle {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: #45556f;
+  font-weight: 700;
+}
+
+.title {
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-weight: 700;
+  line-height: 1.08;
+  color: #111a2e;
+}
+
+.subtitle {
+  color: #475569;
+  max-width: 720px;
+}
+
+.cardWarm {
+  border: none;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.cardWarmHeader {
+  background: linear-gradient(90deg, #fff2e3, #fef7ef);
+  border-bottom: 1px solid #fde2c9;
+}
+
+.cardCool {
+  border: none;
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.cardCoolHeader {
+  background: linear-gradient(90deg, #e8f0ff, #f2f7ff);
+  border-bottom: 1px solid #d7e5ff;
+}

@@ -58,12 +58,11 @@ export const normalizarMontoInput = (value) => {
   return /^\d*(\.\d*)?$/.test(normalizado) ? normalizado : null;
 };
 
-// Conversões de unidades
 export const UNIDADES = {
-  BNB: { label: "BNB", factor: "1" },
-  mBNB: { label: "mBNB", factor: "0.001" },
-  Gwei: { label: "Gwei", factor: "0.000000001" },
-  Wei: { label: "Wei", factor: "0.000000000000000001" },
+  BNB: { label: "BNB", decimals: 18 },
+  mBNB: { label: "mBNB", decimals: 15 },
+  Gwei: { label: "Gwei", decimals: 9 },
+  Wei: { label: "Wei", decimals: 0 },
 };
 
 /**
@@ -78,14 +77,8 @@ export const convertirAWei = (monto, unidad) => {
   }
 
   try {
-    const factor = UNIDADES[unidad].factor;
     const montoNormalizado = monto.replace(",", ".");
-    
-    // Multiplicar el monto por el factor para convertir a BNB
-    const montoEnBNB = (parseFloat(montoNormalizado) * parseFloat(factor)).toString();
-    
-    // Convertir BNB a Wei
-    return ethers.utils.parseEther(montoEnBNB).toString();
+    return ethers.utils.parseUnits(montoNormalizado, UNIDADES[unidad].decimals).toString();
   } catch (error) {
     throw new Error("Error al convertir monto: " + error.message);
   }
@@ -103,10 +96,7 @@ export const convertirDesdeWei = (monto, unidad) => {
   }
 
   try {
-    const factor = UNIDADES[unidad].factor;
-    const montoEnBNB = ethers.utils.formatEther(monto);
-    const resultado = (parseFloat(montoEnBNB) / parseFloat(factor)).toString();
-    return resultado;
+    return ethers.utils.formatUnits(monto, UNIDADES[unidad].decimals);
   } catch (error) {
     throw new Error("Error al convertir monto: " + error.message);
   }
@@ -120,14 +110,14 @@ export const convertirDesdeWei = (monto, unidad) => {
  */
 export const esMontoValidoEnUnidad = (valor, unidad) => {
   if (!valor || !unidad || !UNIDADES[unidad]) return false;
-  
+
   const normalizado = valor.replace(",", ".");
   if (!/^\d*(\.\d*)?$/.test(normalizado)) return false;
   if (normalizado === ".") return false;
 
   try {
-    convertirAWei(normalizado, unidad);
-    return parseFloat(normalizado) > 0;
+    const wei = convertirAWei(normalizado, unidad);
+    return ethers.BigNumber.from(wei).gt(0);
   } catch {
     return false;
   }

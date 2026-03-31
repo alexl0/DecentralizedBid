@@ -1,5 +1,5 @@
-import { esMontoValido, tiempoRestanteTexto, UNIDADES, esMontoValidoEnUnidad, convertirDesdeWei, convertirAWei } from "@/features/subasta/utils";
-import { CONTRACT_ADDRESS } from "@/features/subasta/config";
+import Link from "next/link";
+import { tiempoRestanteTexto, UNIDADES, esMontoValidoEnUnidad, convertirDesdeWei, convertirAWei } from "@/features/subasta/utils";
 
 export default function SubastaView(props) {
   const {
@@ -19,6 +19,7 @@ export default function SubastaView(props) {
     cargandoPujas,
     montoBNB,
     unidad,
+    contractAddress,
     mensaje,
     esOwner,
     onChangeMonto,
@@ -40,10 +41,13 @@ export default function SubastaView(props) {
 
   return (
     <div className="container py-4" style={{ maxWidth: "900px" }}>
-      <div className="mb-3">
-        <a href="/" className="btn btn-link ps-0">
-          Volver al inicio
-        </a>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <Link href="/" className="btn btn-outline-dark btn-sm rounded-pill px-3">
+          Inicio
+        </Link>
+        <Link href="/subastas" className="btn btn-outline-primary btn-sm rounded-pill px-3">
+          Centro de subastas
+        </Link>
       </div>
 
       <h1 className="mb-3">Subasta Descentralizada</h1>
@@ -59,7 +63,7 @@ export default function SubastaView(props) {
           <h2 className="h5 card-title">Conexion</h2>
           <p className="mb-1"><strong>Cuenta:</strong> {cuenta || "-"}</p>
           <p className="mb-1"><strong>Owner:</strong> {owner || "-"}</p>
-          <p className="mb-0"><strong>Contrato:</strong> {CONTRACT_ADDRESS}</p>
+          <p className="mb-0"><strong>Contrato:</strong> {contractAddress}</p>
         </div>
       </div>
 

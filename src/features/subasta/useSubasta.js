@@ -3,7 +3,6 @@ import detectEthereumProvider from "@metamask/detect-provider";
 import { Contract, ethers } from "ethers";
 import { CONTRACT_ADDRESS, EVENTS_RPC_URL, SUBASTA_ABI } from "./config";
 import { 
-  esMontoValido, 
   normalizarMontoInput, 
   obtenerMensajeError,
   convertirAWei,
@@ -11,8 +10,10 @@ import {
   UNIDADES 
 } from "./utils";
 
-export function useSubasta() {
+export function useSubasta(options = {}) {
   const contractRef = useRef(null);
+  const contractAddress = options.contractAddress || CONTRACT_ADDRESS;
+  const deployBlockOverride = Number(options.deployBlock || 0);
 
   const [cuenta, setCuenta] = useState("");
   const [owner, setOwner] = useState("");
@@ -48,7 +49,11 @@ export function useSubasta() {
     try {
       setCargandoPujas(true);
       const configuredBlock = Number(process.env.NEXT_PUBLIC_CONTRACT_DEPLOY_BLOCK || 0);
-      const bloqueInicio = Number.isFinite(configuredBlock) && configuredBlock >= 0 ? configuredBlock : 0;
+      const bloqueInicio = Number.isFinite(deployBlockOverride) && deployBlockOverride > 0
+        ? deployBlockOverride
+        : Number.isFinite(configuredBlock) && configuredBlock >= 0
+          ? configuredBlock
+          : 0;
       const topic0 = ethers.utils.id("NuevaPuja(address,uint256)");
 
       const provider = new ethers.providers.JsonRpcProvider(EVENTS_RPC_URL);
@@ -62,7 +67,7 @@ export function useSubasta() {
       while (desde <= ultimoBloque) {
         const hasta = Math.min(desde + TAMANO_TRAMO - 1, ultimoBloque);
         const lote = await provider.getLogs({
-          address: CONTRACT_ADDRESS,
+          address: contractAddress,
           fromBlock: desde,
           toBlock: hasta,
           topics: [topic0],
@@ -113,7 +118,11 @@ export function useSubasta() {
 
       provider = new ethers.providers.Web3Provider(provider);
       const signer = provider.getSigner();
-      contractRef.current = new Contract(CONTRACT_ADDRESS, SUBASTA_ABI, signer);
+      if (!ethers.utils.isAddress(contractAddress)) {
+        mostrarMensaje("warning", "Direccion de subasta invalida. Revisa la URL o .env.local");
+        return null;
+      }
+      contractRef.current = new Contract(contractAddress, SUBASTA_ABI, signer);
       mostrarMensaje("success", "Wallet conectada y contrato cargado.");
       return accounts[0];
     } catch (error) {
@@ -277,7 +286,7 @@ export function useSubasta() {
 
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [contractAddress]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -304,6 +313,7 @@ export function useSubasta() {
     cargandoPujas,
     montoBNB,
     unidad,
+    contractAddress,
     mensaje,
     esOwner,
     setMontoBNB,

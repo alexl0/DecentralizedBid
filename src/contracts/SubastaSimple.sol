@@ -19,9 +19,10 @@ contract SubastaSimple {
     event FondosGanadorRetirados(address indexed to, uint256 amount);
     event SubastaExtendida(uint256 nuevoEndTime);
 
-    constructor(string memory _producto, uint256 _duracionMinutos) {
+    constructor(address _owner, string memory _producto, uint256 _duracionMinutos) {
+        require(_owner != address(0), "Owner invalido");
         require(_duracionMinutos > 0, "Duracion invalida");
-        owner = msg.sender;
+        owner = _owner;
         producto = _producto;
         endTime = block.timestamp + (_duracionMinutos * 1 minutes);
         extensionWindow = 2 minutes;

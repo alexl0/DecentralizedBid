@@ -441,3 +441,5 @@ contract address: 0xc5050909Bd04bB01529327C553Ec7D511D0260bE
 from: 0x4427fd44874e7b90Ab34EB43809AbFe70682549e
 
 saldo actual mio: 0.373 tBNB
+
+saldo actual mio 0.369

@@ -1,0 +1,14 @@
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f6f9ff 0%, #ffffff 45%, #fff6eb 100%);
+  position: relative;
+}
+
+.backgroundGlow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 12% 8%, rgba(54, 116, 255, 0.18), transparent 28%),
+    radial-gradient(circle at 88% 24%, rgba(255, 139, 57, 0.2), transparent 30%);
+}
