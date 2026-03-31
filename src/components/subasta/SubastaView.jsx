@@ -1,4 +1,4 @@
-import { esMontoValido, tiempoRestanteTexto } from "@/features/subasta/utils";
+import { esMontoValido, tiempoRestanteTexto, UNIDADES, esMontoValidoEnUnidad, convertirDesdeWei, convertirAWei } from "@/features/subasta/utils";
 import { CONTRACT_ADDRESS } from "@/features/subasta/config";
 
 export default function SubastaView(props) {
@@ -18,9 +18,11 @@ export default function SubastaView(props) {
     historialPujas,
     cargandoPujas,
     montoBNB,
+    unidad,
     mensaje,
     esOwner,
     onChangeMonto,
+    setUnidad,
     pujar,
     retirar,
     retirarFondosGanador,
@@ -80,29 +82,73 @@ export default function SubastaView(props) {
       <div className="card mb-3">
         <div className="card-body">
           <h2 className="h5 card-title">Pujar</h2>
-          <div className="row g-2 align-items-center">
-            <div className="col-12 col-md-5">
-              <input
-                type="text"
-                inputMode="decimal"
-                className="form-control"
-                value={montoBNB}
-                onChange={(e) => onChangeMonto(e.target.value)}
-                placeholder="Ej: 0.01"
-                disabled={finalizada || esOwner}
-              />
-              <small className="text-muted">Solo numeros decimales en BNB.</small>
+          
+          {esOwner && (
+            <div className="alert alert-warning mb-3" role="alert">
+              <strong>⚠️ No puedes pujar:</strong> Eres el vendedor de esta subasta. Los usuarios no pueden pujar en sus propias subastas.
             </div>
-            <div className="col-12 col-md-auto">
-              <button
-                className="btn btn-primary"
-                onClick={pujar}
-                disabled={finalizada || esOwner || !esMontoValido(montoBNB)}
-              >
-                Enviar puja
-              </button>
+          )}
+          
+          {!esOwner && !finalizada && (
+            <div className="row g-2 align-items-end">
+              <div className="col-12 col-md-2">
+                <label className="form-label">Unidad</label>
+                <select
+                  className="form-select"
+                  value={unidad}
+                  onChange={(e) => setUnidad(e.target.value)}
+                >
+                  {Object.entries(UNIDADES).map(([key, value]) => (
+                    <option key={key} value={key}>
+                      {value.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="col-12 col-md-3">
+                <label className="form-label">Cantidad en {UNIDADES[unidad].label}</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  className="form-control"
+                  value={montoBNB}
+                  onChange={(e) => onChangeMonto(e.target.value)}
+                  placeholder="Ej: 0.01"
+                />
+              </div>
+              
+              <div className="col-12 col-md-3">
+                <label className="form-label">Equivalente en BNB</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={montoBNB && esMontoValidoEnUnidad(montoBNB, unidad) 
+                    ? convertirDesdeWei(convertirAWei(montoBNB.replace(",", "."), unidad), "BNB").substring(0, 18) 
+                    : "-"}
+                  disabled
+                  readOnly
+                  style={{ backgroundColor: "#f8f9fa", cursor: "not-allowed" }}
+                />
+              </div>
+              
+              <div className="col-12 col-md-auto">
+                <button
+                  className="btn btn-primary"
+                  onClick={pujar}
+                  disabled={finalizada || !esMontoValidoEnUnidad(montoBNB, unidad)}
+                >
+                  Enviar puja
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+          
+          {finalizada && !esOwner && (
+            <div className="alert alert-info mb-0" role="alert">
+              La subasta ha finalizado. No se aceptan más pujas.
+            </div>
+          )}
         </div>
       </div>
 

@@ -8,12 +8,6 @@ Tanto del contrato (SubastaSimple.sol) como de la aplicación
 - También mejorar mensajes (Por ejemplo: "La subasta aun no termina")
 - Luego, hay otros mensajes como por ejemplo "user rejected transaction" que no aparecen en el contrato, deben ser propios de solidity.
 
-## Separar lógica de negocio e interfaz de usuario en la aplicación react
-Ahora mismo está todo en subasta.js
-
-## Hacer .env para variables de entorno
-Como la dirección del contrato.
-
 ## Workflow de trabajo
 Hacer un workflow de trabajo con una vm y agentes claude que permita que tengan acceso a todo (consola de desarrollador del navegador, consola de ejecución de node, etc) para evitar trabas y que puedan desarrollar viendo todos los errores, etc.
 

@@ -2,7 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import detectEthereumProvider from "@metamask/detect-provider";
 import { Contract, ethers } from "ethers";
 import { CONTRACT_ADDRESS, EVENTS_RPC_URL, SUBASTA_ABI } from "./config";
-import { esMontoValido, normalizarMontoInput, obtenerMensajeError } from "./utils";
+import { 
+  esMontoValido, 
+  normalizarMontoInput, 
+  obtenerMensajeError,
+  convertirAWei,
+  esMontoValidoEnUnidad,
+  UNIDADES 
+} from "./utils";
 
 export function useSubasta() {
   const contractRef = useRef(null);
@@ -23,6 +30,7 @@ export function useSubasta() {
   const [cargandoPujas, setCargandoPujas] = useState(false);
 
   const [montoBNB, setMontoBNB] = useState("");
+  const [unidad, setUnidad] = useState("BNB");
   const [mensaje, setMensaje] = useState({ tipo: "", texto: "" });
 
   const esOwner = owner && cuenta && owner.toLowerCase() === cuenta.toLowerCase();
@@ -200,14 +208,15 @@ export function useSubasta() {
       mostrarMensaje("warning", "La subasta ya ha finalizado. No se admiten mas pujas.");
       return;
     }
-    if (!esMontoValido(montoBNB)) {
-      mostrarMensaje("warning", "Introduce una cantidad valida de BNB mayor que 0 (ej: 0.01).");
+    if (!esMontoValidoEnUnidad(montoBNB, unidad)) {
+      mostrarMensaje("warning", `Introduce una cantidad valida de ${UNIDADES[unidad].label} mayor que 0.`);
       return;
     }
 
     try {
+      const montoEnWei = convertirAWei(montoBNB.replace(",", "."), unidad);
       const tx = await contractRef.current.pujar({
-        value: ethers.utils.parseEther(montoBNB.replace(",", ".")),
+        value: montoEnWei,
       });
       mostrarMensaje("info", "Puja enviada. Esperando confirmacion...");
       await tx.wait();
@@ -294,9 +303,11 @@ export function useSubasta() {
     historialPujas,
     cargandoPujas,
     montoBNB,
+    unidad,
     mensaje,
     esOwner,
     setMontoBNB,
+    setUnidad,
     onChangeMonto,
     pujar,
     retirar,

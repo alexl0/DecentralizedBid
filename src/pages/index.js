@@ -4,8 +4,7 @@ export default function Home() {
       <h1>Proyecto Blockchain</h1>
       <p>Selecciona una funcionalidad:</p>
       <ul>
-        <li><a href="/todo">ToDoSimple (ejemplo anterior)</a></li>
-        <li><a href="/subasta">Subasta descentralizada (entrega)</a></li>
+        <li><a href="/subasta">Subasta descentralizada</a></li>
       </ul>
     </div>
   );
