@@ -15,6 +15,9 @@ export const obtenerMensajeError = (error, fallback) => {
   const revertFromReason = limpiarMensajeRevert(error?.reason);
   if (revertFromReason) return revertFromReason;
 
+  if (error?.errorName) return `Error: ${error.errorName}`;
+  if (error?.error?.errorName) return `Error: ${error.error.errorName}`;
+
   const revertFromNested = limpiarMensajeRevert(error?.error?.message);
   if (revertFromNested) return revertFromNested;
 
@@ -29,10 +32,29 @@ export const obtenerMensajeError = (error, fallback) => {
   return fallback;
 };
 
-export const tiempoRestanteTexto = (endTime, ahora) => {
+export const obtenerCodigoErrorBlockchain = (error) => {
+  const code = error?.errorName || error?.error?.errorName;
+  if (code) return code;
+
+  const reason = error?.reason || error?.error?.message || error?.data?.message || error?.message || "";
+  const match = reason.match(/([A-Za-z_][A-Za-z0-9_]*)\(\)/);
+  return match ? match[1] : null;
+};
+
+export const obtenerMensajeErrorTraducido = (error, t, fallback) => {
+  const code = obtenerCodigoErrorBlockchain(error);
+  if (code) {
+    const translated = t(`errors.${code}`);
+    if (translated !== `errors.${code}`) return translated;
+  }
+
+  return obtenerMensajeError(error, fallback);
+};
+
+export const tiempoRestanteTexto = (endTime, ahora, finishedLabel = "Finalizada") => {
   if (!endTime) return "-";
   const restante = endTime - ahora;
-  if (restante <= 0) return "Finalizada";
+  if (restante <= 0) return finishedLabel;
 
   const horas = Math.floor(restante / 3600);
   const minutos = Math.floor((restante % 3600) / 60);

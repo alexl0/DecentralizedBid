@@ -9,7 +9,9 @@ import {
   FACTORY_DEPLOY_BLOCK,
   SUBASTA_ABI,
 } from "@/features/subasta/config";
-import { obtenerMensajeError } from "@/features/subasta/utils";
+import { obtenerMensajeErrorTraducido } from "@/features/subasta/utils";
+import { useI18n } from "@/i18n/provider";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import styles from "@/styles/SubastasHub.module.css";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -20,6 +22,7 @@ function shortAddress(addr) {
 }
 
 export default function SubastasHubPage() {
+  const { t } = useI18n();
   const [cuenta, setCuenta] = useState("");
   const [mensaje, setMensaje] = useState({ tipo: "", texto: "" });
   const [producto, setProducto] = useState("");
@@ -41,13 +44,13 @@ export default function SubastasHubPage() {
   const obtenerProvider = async () => {
     const provider = await detectEthereumProvider();
     if (!provider) {
-      mostrarMensaje("warning", "MetaMask no detectado.");
+      mostrarMensaje("warning", t("common.metamaskNotDetected"));
       return null;
     }
 
     const chainId = await provider.request({ method: "eth_chainId" });
     if (chainId !== "0x61") {
-      mostrarMensaje("warning", `Red incorrecta. MetaMask esta en chainId ${parseInt(chainId, 16)}.`);
+      mostrarMensaje("warning", t("common.wrongNetwork", { chainId: parseInt(chainId, 16) }));
       return null;
     }
 
@@ -180,7 +183,7 @@ export default function SubastasHubPage() {
       setMias(myDetails);
       setParticipando(participandoDetails);
     } catch (error) {
-      mostrarMensaje("danger", obtenerMensajeError(error, "No se pudo cargar el hub de subastas."));
+      mostrarMensaje("danger", obtenerMensajeErrorTraducido(error, t, t("hub.loadError")));
     } finally {
       setCargando(false);
     }
@@ -188,18 +191,18 @@ export default function SubastasHubPage() {
 
   const crearSubasta = async () => {
     if (!factoryDisponible) {
-      mostrarMensaje("warning", "Configura NEXT_PUBLIC_FACTORY_ADDRESS para habilitar esta accion.");
+      mostrarMensaje("warning", t("hub.factoryRequiredToCreate"));
       return;
     }
 
     if (!producto.trim()) {
-      mostrarMensaje("warning", "Indica el nombre del producto.");
+      mostrarMensaje("warning", t("hub.productRequired"));
       return;
     }
 
     const mins = Number(duracion);
     if (!Number.isInteger(mins) || mins <= 0) {
-      mostrarMensaje("warning", "La duracion debe ser un entero positivo en minutos.");
+      mostrarMensaje("warning", t("hub.durationInvalid"));
       return;
     }
 
@@ -211,13 +214,13 @@ export default function SubastasHubPage() {
       const signer = provider.getSigner();
       const factory = new Contract(FACTORY_ADDRESS, FACTORY_ABI, signer);
       const tx = await factory.crearSubasta(producto.trim(), mins);
-      mostrarMensaje("info", "Creacion enviada. Esperando confirmacion...");
+      mostrarMensaje("info", t("hub.createSent"));
       await tx.wait();
       setProducto("");
       await cargarListados();
-      mostrarMensaje("success", "Subasta creada correctamente.");
+      mostrarMensaje("success", t("hub.createSuccess"));
     } catch (error) {
-      mostrarMensaje("danger", obtenerMensajeError(error, "No se pudo crear la subasta."));
+      mostrarMensaje("danger", obtenerMensajeErrorTraducido(error, t, t("hub.createError")));
     } finally {
       setCreando(false);
     }
@@ -246,11 +249,11 @@ export default function SubastasHubPage() {
             <table className="table table-sm align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Producto</th>
-                  <th>Owner</th>
-                  <th>Puja mas alta</th>
-                  <th>Mi puja</th>
-                  <th>Estado</th>
+                  <th>{t("ui.product")}</th>
+                  <th>{t("ui.owner")}</th>
+                  <th>{t("ui.highestBid")}</th>
+                  <th>{t("ui.myBid")}</th>
+                  <th>{t("ui.status")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -261,13 +264,13 @@ export default function SubastasHubPage() {
                     <td title={s.owner}>{shortAddress(s.owner)}</td>
                     <td>{s.highestBid} BNB</td>
                     <td>{s.miPuja} BNB</td>
-                    <td>{s.finalizada ? "Finalizada" : "Activa"}</td>
+                    <td>{s.finalizada ? t("ui.finished") : t("ui.active")}</td>
                     <td>
                       <Link
                         className="btn btn-outline-primary btn-sm"
                         href={`/subasta?address=${s.address}${s.deployBlock ? `&block=${s.deployBlock}` : ""}`}
                       >
-                        Abrir
+                        {t("ui.open")}
                       </Link>
                     </td>
                   </tr>
@@ -284,24 +287,24 @@ export default function SubastasHubPage() {
     <div className={styles.page}>
       <div className={styles.backgroundGlow} aria-hidden="true" />
       <div className="container py-4" style={{ maxWidth: "1080px" }}>
-        <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="d-flex align-items-center mb-3">
           <Link href="/" className="btn btn-outline-dark btn-sm rounded-pill px-3">
-            Inicio
+            {t("ui.home")}
           </Link>
-          <Link href="/subasta" className="btn btn-outline-primary btn-sm rounded-pill px-3">
-            Subasta actual
-          </Link>
+          <div className="ms-auto">
+            <LanguageSwitcher />
+          </div>
         </div>
 
         <header className="mb-4">
-          <h1 className="display-6 fw-bold mb-2">Centro de Subastas</h1>
-          <p className="text-muted mb-0">Crea nuevas subastas desde la app y gestiona tus participaciones.</p>
-          <small className="text-muted">Wallet: {cuenta || "-"}</small>
+          <h1 className="display-6 fw-bold mb-2">{t("ui.auctionsHub")}</h1>
+          <p className="text-muted mb-0">{t("ui.hubSubtitle")}</p>
+          <small className="text-muted">{t("ui.walletLabel")}: {cuenta || "-"}</small>
         </header>
 
         {!factoryDisponible && (
           <Alert tipo="warning">
-            Falta configurar <strong>NEXT_PUBLIC_FACTORY_ADDRESS</strong> en el entorno de build (por ejemplo, .env.local o .env.production) para habilitar la creacion y listados.
+            {t("hub.factoryMissingEnv")}
           </Alert>
         )}
 
@@ -313,21 +316,21 @@ export default function SubastasHubPage() {
 
         <section className="card mb-3">
           <div className="card-body">
-            <h2 className="h5 mb-3">Crear subasta</h2>
+            <h2 className="h5 mb-3">{t("ui.createAuction")}</h2>
             <div className="row g-2 align-items-end">
               <div className="col-12 col-md-6">
-                <label className="form-label">Producto</label>
+                <label className="form-label">{t("ui.product")}</label>
                 <input
                   type="text"
                   className="form-control"
                   value={producto}
                   onChange={(e) => setProducto(e.target.value)}
-                  placeholder="Ej: Teclado mecanico"
+                  placeholder={t("ui.productPlaceholder")}
                   disabled={!factoryDisponible || creando}
                 />
               </div>
               <div className="col-12 col-md-3">
-                <label className="form-label">Duracion (min)</label>
+                <label className="form-label">{t("ui.durationMin")}</label>
                 <input
                   type="number"
                   min="1"
@@ -339,12 +342,12 @@ export default function SubastasHubPage() {
               </div>
               <div className="col-12 col-md-auto">
                 <button className="btn btn-primary" onClick={crearSubasta} disabled={!factoryDisponible || creando}>
-                  {creando ? "Creando..." : "Crear"}
+                  {creando ? t("ui.creating") : t("ui.create")}
                 </button>
               </div>
               <div className="col-12 col-md-auto">
                 <button className="btn btn-outline-secondary" onClick={cargarListados} disabled={cargando || !factoryDisponible}>
-                  {cargando ? "Actualizando..." : "Recargar"}
+                  {cargando ? t("ui.updating") : t("ui.reload")}
                 </button>
               </div>
             </div>
@@ -352,18 +355,18 @@ export default function SubastasHubPage() {
         </section>
 
         <Lista
-          titulo="Mis subastas creadas"
+          titulo={t("ui.myAuctions")}
           items={mias}
-          emptyText="Aun no has creado ninguna subasta desde esta factory."
+          emptyText={t("ui.noCreatedAuctions")}
         />
 
         <Lista
-          titulo="Subastas donde participo"
+          titulo={t("ui.participatingAuctions")}
           items={participando}
-          emptyText="Todavia no has pujado en subastas de esta factory."
+          emptyText={t("ui.noParticipatingAuctions")}
         />
 
-        <Lista titulo="Todas las subastas" items={todas} emptyText="No hay subastas creadas aun." />
+        <Lista titulo={t("ui.allAuctions")} items={todas} emptyText={t("ui.noAuctions")} />
       </div>
     </div>
   );

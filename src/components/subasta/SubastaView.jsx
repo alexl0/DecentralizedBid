@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { tiempoRestanteTexto, UNIDADES, esMontoValidoEnUnidad, convertirDesdeWei, convertirAWei } from "@/features/subasta/utils";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useI18n } from "@/i18n/provider";
 
 export default function SubastaView(props) {
+  const { t } = useI18n();
   const {
     cuenta,
     owner,
@@ -43,14 +46,17 @@ export default function SubastaView(props) {
     <div className="container py-4" style={{ maxWidth: "900px" }}>
       <div className="d-flex justify-content-between align-items-center mb-3">
         <Link href="/" className="btn btn-outline-dark btn-sm rounded-pill px-3">
-          Inicio
+          {t("ui.home")}
         </Link>
-        <Link href="/subastas" className="btn btn-outline-primary btn-sm rounded-pill px-3">
-          Centro de subastas
-        </Link>
+        <div className="d-flex gap-2 align-items-center">
+          <Link href="/subastas" className="btn btn-outline-primary btn-sm rounded-pill px-3">
+            {t("ui.auctionsHub")}
+          </Link>
+          <LanguageSwitcher />
+        </div>
       </div>
 
-      <h1 className="mb-3">Subasta Descentralizada</h1>
+      <h1 className="mb-3">{t("ui.decentralizedAuction")}</h1>
 
       {mensaje.texto && (
         <div className={alertClass[mensaje.tipo] || "alert alert-secondary"} role="alert">
@@ -60,43 +66,43 @@ export default function SubastaView(props) {
 
       <div className="card mb-3">
         <div className="card-body">
-          <h2 className="h5 card-title">Conexion</h2>
-          <p className="mb-1"><strong>Cuenta:</strong> {cuenta || "-"}</p>
-          <p className="mb-1"><strong>Owner:</strong> {owner || "-"}</p>
-          <p className="mb-0"><strong>Contrato:</strong> {contractAddress}</p>
+          <h2 className="h5 card-title">{t("ui.connection")}</h2>
+          <p className="mb-1"><strong>{t("ui.account")}:</strong> {cuenta || "-"}</p>
+          <p className="mb-1"><strong>{t("ui.owner")}:</strong> {owner || "-"}</p>
+          <p className="mb-0"><strong>{t("ui.contract")}:</strong> {contractAddress}</p>
         </div>
       </div>
 
       <div className="card mb-3">
         <div className="card-body">
-          <h2 className="h5 card-title">Estado</h2>
-          <p className="mb-1"><strong>Producto:</strong> {producto || "-"}</p>
-          <p className="mb-1"><strong>Puja mas alta:</strong> {highestBid} BNB</p>
-          <p className="mb-1"><strong>Mejor postor:</strong> {highestBidder || "-"}</p>
-          <p className="mb-1"><strong>Mi puja:</strong> {miPuja} BNB</p>
-          <p className="mb-1"><strong>Finaliza en:</strong> {endTime ? new Date(endTime * 1000).toLocaleString() : "-"}</p>
-          <p className="mb-1"><strong>Ventana anti-sniping:</strong> {Math.floor(extensionWindow / 60)} min</p>
-          <p className="mb-3"><strong>Tiempo restante:</strong> {tiempoRestanteTexto(endTime, ahora)}</p>
+          <h2 className="h5 card-title">{t("ui.state")}</h2>
+          <p className="mb-1"><strong>{t("ui.product")}:</strong> {producto || "-"}</p>
+          <p className="mb-1"><strong>{t("ui.highestBid")}:</strong> {highestBid} BNB</p>
+          <p className="mb-1"><strong>{t("ui.bestBidder")}:</strong> {highestBidder || "-"}</p>
+          <p className="mb-1"><strong>{t("ui.myBid")}:</strong> {miPuja} BNB</p>
+          <p className="mb-1"><strong>{t("ui.endsAt")}:</strong> {endTime ? new Date(endTime * 1000).toLocaleString() : "-"}</p>
+          <p className="mb-1"><strong>{t("ui.antiSnipingWindow")}:</strong> {Math.floor(extensionWindow / 60)} min</p>
+          <p className="mb-3"><strong>{t("ui.remainingTime")}:</strong> {tiempoRestanteTexto(endTime, ahora, t("ui.finished"))}</p>
           <button className="btn btn-outline-secondary btn-sm" onClick={() => cargarEstado()}>
-            Recargar estado
+            {t("ui.reloadState")}
           </button>
         </div>
       </div>
 
       <div className="card mb-3">
         <div className="card-body">
-          <h2 className="h5 card-title">Pujar</h2>
+          <h2 className="h5 card-title">{t("ui.bid")}</h2>
           
           {esOwner && (
             <div className="alert alert-warning mb-3" role="alert">
-              <strong>⚠️ No puedes pujar:</strong> Eres el vendedor de esta subasta. Los usuarios no pueden pujar en sus propias subastas.
+              <strong>{t("ui.ownerCannotBidTitle")}:</strong> {t("ui.ownerCannotBidBody")}
             </div>
           )}
           
           {!esOwner && !finalizada && (
             <div className="row g-2 align-items-end">
               <div className="col-12 col-md-2">
-                <label className="form-label">Unidad</label>
+                <label className="form-label">{t("ui.unit")}</label>
                 <select
                   className="form-select"
                   value={unidad}
@@ -111,19 +117,19 @@ export default function SubastaView(props) {
               </div>
               
               <div className="col-12 col-md-3">
-                <label className="form-label">Cantidad en {UNIDADES[unidad].label}</label>
+                <label className="form-label">{t("ui.amountInUnit", { unit: UNIDADES[unidad].label })}</label>
                 <input
                   type="text"
                   inputMode="decimal"
                   className="form-control"
                   value={montoBNB}
                   onChange={(e) => onChangeMonto(e.target.value)}
-                  placeholder="Ej: 0.01"
+                  placeholder={t("ui.bidPlaceholder")}
                 />
               </div>
               
               <div className="col-12 col-md-3">
-                <label className="form-label">Equivalente en BNB</label>
+                <label className="form-label">{t("ui.equivalentInBnb")}</label>
                 <input
                   type="text"
                   className="form-control"
@@ -142,7 +148,7 @@ export default function SubastaView(props) {
                   onClick={pujar}
                   disabled={finalizada || !esMontoValidoEnUnidad(montoBNB, unidad)}
                 >
-                  Enviar puja
+                  {t("ui.sendBid")}
                 </button>
               </div>
             </div>
@@ -150,7 +156,7 @@ export default function SubastaView(props) {
           
           {finalizada && !esOwner && (
             <div className="alert alert-info mb-0" role="alert">
-              La subasta ha finalizado. No se aceptan más pujas.
+              {t("ui.auctionEndedInfo")}
             </div>
           )}
         </div>
@@ -158,18 +164,18 @@ export default function SubastaView(props) {
 
       <div className="card">
         <div className="card-body">
-          <h2 className="h5 card-title">Post-subasta</h2>
+          <h2 className="h5 card-title">{t("ui.postAuction")}</h2>
           <div className="d-flex flex-wrap gap-2 mb-3">
             <button className="btn btn-outline-primary" onClick={consultarGanador}>
-              Consultar ganador
+              {t("ui.consultWinner")}
             </button>
             {ganador && ganador.toLowerCase() === cuenta.toLowerCase() ? (
               <div className="alert alert-success mb-0" role="alert">
-                Eres el ganador. El vendedor se encargara de enviar el producto.
+                {t("ui.winnerMessage")}
               </div>
             ) : (
               <button className="btn btn-outline-success" onClick={retirar} disabled={!finalizada || esOwner || Number(miPuja) <= 0}>
-                Retirar fondos (no ganador)
+                {t("ui.withdrawNonWinner")}
               </button>
             )}
             {finalizada && owner && cuenta.toLowerCase() === owner.toLowerCase() ? (
@@ -178,14 +184,14 @@ export default function SubastaView(props) {
                 onClick={retirarFondosGanador}
                 disabled={fondosGanadorRetirados || Number(highestBid) <= 0}
               >
-                {fondosGanadorRetirados ? "Fondos ya retirados" : "Retirar fondos ganador (vendedor)"}
+                {fondosGanadorRetirados ? t("ui.winnerFundsWithdrawn") : t("ui.withdrawWinnerFundsSeller")}
               </button>
             ) : null}
           </div>
 
           {ganador && (
             <p className="mb-0">
-              <strong>Ganador:</strong> {ganador}
+              <strong>{t("ui.winner")}:</strong> {ganador}
             </p>
           )}
         </div>
@@ -194,16 +200,16 @@ export default function SubastaView(props) {
       <div className="card mt-3">
         <div className="card-body">
           <div className="d-flex justify-content-between align-items-center mb-2">
-            <h2 className="h5 card-title mb-0">Historial de pujas</h2>
+            <h2 className="h5 card-title mb-0">{t("ui.bidHistory")}</h2>
             <button className="btn btn-outline-secondary btn-sm" onClick={cargarHistorialPujas}>
-              Recargar pujas
+              {t("ui.reloadBids")}
             </button>
           </div>
 
-          {cargandoPujas ? <p className="mb-0">Cargando pujas...</p> : null}
+          {cargandoPujas ? <p className="mb-0">{t("ui.loadingBids")}</p> : null}
 
           {!cargandoPujas && historialPujas.length === 0 ? (
-            <p className="mb-0">Aun no hay pujas registradas.</p>
+            <p className="mb-0">{t("ui.noBidsYet")}</p>
           ) : null}
 
           {!cargandoPujas && historialPujas.length > 0 ? (
@@ -212,8 +218,8 @@ export default function SubastaView(props) {
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Direccion</th>
-                    <th>Importe (BNB)</th>
+                    <th>{t("ui.address")}</th>
+                    <th>{t("ui.amountBnb")}</th>
                   </tr>
                 </thead>
                 <tbody>

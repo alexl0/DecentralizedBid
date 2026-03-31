@@ -53,17 +53,6 @@
   max-width: 720px;
 }
 
-.cardWarm {
-  border: none;
-  border-radius: 18px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-}
-
-.cardWarmHeader {
-  background: linear-gradient(90deg, #fff2e3, #fef7ef);
-  border-bottom: 1px solid #fde2c9;
-}
-
 .cardCool {
   border: none;
   border-radius: 18px;

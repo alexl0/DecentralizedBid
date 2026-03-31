@@ -4,6 +4,20 @@ pragma solidity ^0.8.10;
 // Modelo: El ganador puja y paga. El vendedor (owner) retira los fondos y se encarga de enviar el producto.
 // Los no ganadores pueden retirar su dinero al finalizar.
 contract SubastaSimple {
+    error OwnerInvalido();
+    error DuracionInvalida();
+    error SubastaFinalizada();
+    error VendedorNoPuedePujar();
+    error SoloUnaPujaPorUsuario();
+    error PujaInsuficiente();
+    error SubastaNoFinalizada();
+    error GanadorNoPuedeRetirar();
+    error SinFondosParaRetirar();
+    error TransferenciaFallida();
+    error SoloVendedor();
+    error FondosGanadorYaRetirados();
+    error SinPujaGanadora();
+
     address public owner;
     string public producto;
     uint256 public endTime;
@@ -20,8 +34,8 @@ contract SubastaSimple {
     event SubastaExtendida(uint256 nuevoEndTime);
 
     constructor(address _owner, string memory _producto, uint256 _duracionMinutos) {
-        require(_owner != address(0), "Owner invalido");
-        require(_duracionMinutos > 0, "Duracion invalida");
+        if (_owner == address(0)) revert OwnerInvalido();
+        if (_duracionMinutos == 0) revert DuracionInvalida();
         owner = _owner;
         producto = _producto;
         endTime = block.timestamp + (_duracionMinutos * 1 minutes);
@@ -29,10 +43,10 @@ contract SubastaSimple {
     }
 
     function pujar() external payable {
-        require(block.timestamp < endTime, "Subasta finalizada");
-        require(msg.sender != owner, "El vendedor no puede pujar");
-        require(bids[msg.sender] == 0, "Solo una puja por usuario");
-        require(msg.value > highestBid, "La puja debe superar la actual");
+        if (block.timestamp >= endTime) revert SubastaFinalizada();
+        if (msg.sender == owner) revert VendedorNoPuedePujar();
+        if (bids[msg.sender] != 0) revert SoloUnaPujaPorUsuario();
+        if (msg.value <= highestBid) revert PujaInsuficiente();
 
         // Anti-sniping: si entra una puja en la ventana final, extendemos el cierre.
         if (endTime - block.timestamp <= extensionWindow) {
@@ -52,37 +66,37 @@ contract SubastaSimple {
     }
 
     function ganador() external view returns (address) {
-        require(subastaFinalizada(), "La subasta aun no termina");
+        if (!subastaFinalizada()) revert SubastaNoFinalizada();
         return highestBidder;
     }
 
     function retirarNoGanador() external {
         // Solo usuarios que NO ganaron pueden retirar su puja
-        require(subastaFinalizada(), "La subasta aun no termina");
-        require(msg.sender != highestBidder, "El ganador no puede retirar (el vendedor se encargara del producto)");
+        if (!subastaFinalizada()) revert SubastaNoFinalizada();
+        if (msg.sender == highestBidder) revert GanadorNoPuedeRetirar();
 
         uint256 amount = bids[msg.sender];
-        require(amount > 0, "No has pujado o ya retiraste tus fondos");
+        if (amount == 0) revert SinFondosParaRetirar();
 
         // CEI: primero actualizar estado, luego transferir.
         bids[msg.sender] = 0;
 
         (bool ok,) = payable(msg.sender).call{value: amount}("");
-        require(ok, "Error al transferir");
+        if (!ok) revert TransferenciaFallida();
     }
 
     // Solo el owner (vendedor) puede retirar los fondos de la puja ganadora.
     // Responsable de enviar el producto al ganador.
     function retirarFondosGanador() external {
-        require(msg.sender == owner, "Solo el vendedor puede retirar los fondos del ganador");
-        require(subastaFinalizada(), "La subasta aun no termina");
-        require(!fondosGanadorRetirados, "Fondos ya retirados");
-        require(highestBid > 0, "No hay puja ganadora");
+        if (msg.sender != owner) revert SoloVendedor();
+        if (!subastaFinalizada()) revert SubastaNoFinalizada();
+        if (fondosGanadorRetirados) revert FondosGanadorYaRetirados();
+        if (highestBid == 0) revert SinPujaGanadora();
 
         fondosGanadorRetirados = true;
 
         (bool ok,) = payable(owner).call{value: highestBid}("");
-        require(ok, "Error al transferir");
+        if (!ok) revert TransferenciaFallida();
 
         emit FondosGanadorRetirados(owner, highestBid);
     }

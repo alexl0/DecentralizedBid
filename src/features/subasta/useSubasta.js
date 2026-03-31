@@ -4,13 +4,15 @@ import { Contract, ethers } from "ethers";
 import { CONTRACT_ADDRESS, EVENTS_RPC_URL, SUBASTA_ABI } from "./config";
 import { 
   normalizarMontoInput, 
-  obtenerMensajeError,
+  obtenerMensajeErrorTraducido,
   convertirAWei,
   esMontoValidoEnUnidad,
   UNIDADES 
 } from "./utils";
+import { useI18n } from "@/i18n/provider";
 
 export function useSubasta(options = {}) {
+  const { t } = useI18n();
   const contractRef = useRef(null);
   const contractAddress = options.contractAddress || CONTRACT_ADDRESS;
   const deployBlockOverride = Number(options.deployBlock || 0);
@@ -90,7 +92,7 @@ export function useSubasta(options = {}) {
       setHistorialPujas(lista);
     } catch (error) {
       console.error("Error al cargar historial de pujas:", error);
-      mostrarMensaje("warning", obtenerMensajeError(error, "No se pudo cargar el historial de pujas."));
+      mostrarMensaje("warning", obtenerMensajeErrorTraducido(error, t, t("subasta.bidHistoryLoadError")));
     } finally {
       setCargandoPujas(false);
     }
@@ -100,7 +102,7 @@ export function useSubasta(options = {}) {
     try {
       let provider = await detectEthereumProvider();
       if (!provider) {
-        mostrarMensaje("warning", "MetaMask no detectado.");
+        mostrarMensaje("warning", t("common.metamaskNotDetected"));
         return null;
       }
 
@@ -111,7 +113,7 @@ export function useSubasta(options = {}) {
       if (chainId !== "0x61") {
         mostrarMensaje(
           "warning",
-          `Red incorrecta. MetaMask esta en chainId ${parseInt(chainId, 16)}. Cambia a BSC Testnet (97).`
+          t("common.wrongNetwork", { chainId: parseInt(chainId, 16) })
         );
         return null;
       }
@@ -119,15 +121,15 @@ export function useSubasta(options = {}) {
       provider = new ethers.providers.Web3Provider(provider);
       const signer = provider.getSigner();
       if (!ethers.utils.isAddress(contractAddress)) {
-        mostrarMensaje("warning", "Direccion de subasta invalida. Revisa la URL o .env.local");
+        mostrarMensaje("warning", t("subasta.invalidAddress"));
         return null;
       }
       contractRef.current = new Contract(contractAddress, SUBASTA_ABI, signer);
-      mostrarMensaje("success", "Wallet conectada y contrato cargado.");
+      mostrarMensaje("success", t("subasta.walletConnected"));
       return accounts[0];
     } catch (error) {
       console.error("Error de conexion:", error);
-      mostrarMensaje("danger", obtenerMensajeError(error, "Error de conexion con blockchain."));
+      mostrarMensaje("danger", obtenerMensajeErrorTraducido(error, t, t("common.connectionError")));
       return null;
     }
   };
@@ -183,7 +185,7 @@ export function useSubasta(options = {}) {
       await cargarHistorialPujas();
     } catch (error) {
       console.error("Error al cargar estado:", error);
-      mostrarMensaje("danger", obtenerMensajeError(error, "Error al cargar estado de la subasta."));
+      mostrarMensaje("danger", obtenerMensajeErrorTraducido(error, t, t("subasta.stateLoadError")));
     }
   };
 
@@ -191,34 +193,34 @@ export function useSubasta(options = {}) {
     if (!contractRef.current) return;
 
     if (cuenta.toLowerCase() !== owner.toLowerCase()) {
-      mostrarMensaje("danger", "Solo el vendedor puede retirar los fondos del ganador.");
+      mostrarMensaje("danger", t("subasta.onlySellerWithdrawWinner"));
       return;
     }
 
     try {
       const tx = await contractRef.current.retirarFondosGanador();
-      mostrarMensaje("info", "Retirada de fondos enviada. Esperando confirmacion...");
+      mostrarMensaje("info", t("subasta.winnerWithdrawSent"));
       await tx.wait();
       await cargarEstado();
-      mostrarMensaje("success", "Fondos del ganador retirados correctamente a tu cartera.");
+      mostrarMensaje("success", t("subasta.winnerWithdrawSuccess"));
     } catch (error) {
       console.error("Error al retirar fondos del ganador:", error);
-      mostrarMensaje("danger", obtenerMensajeError(error, "Error al retirar fondos del ganador."));
+      mostrarMensaje("danger", obtenerMensajeErrorTraducido(error, t, t("subasta.winnerWithdrawError")));
     }
   };
 
   const pujar = async () => {
     if (!contractRef.current) return;
     if (esOwner) {
-      mostrarMensaje("warning", "El vendedor no puede pujar en su propia subasta.");
+      mostrarMensaje("warning", t("subasta.sellerCannotBid"));
       return;
     }
     if (finalizada) {
-      mostrarMensaje("warning", "La subasta ya ha finalizado. No se admiten mas pujas.");
+      mostrarMensaje("warning", t("subasta.auctionEndedNoBids"));
       return;
     }
     if (!esMontoValidoEnUnidad(montoBNB, unidad)) {
-      mostrarMensaje("warning", `Introduce una cantidad valida de ${UNIDADES[unidad].label} mayor que 0.`);
+      mostrarMensaje("warning", t("subasta.invalidBidAmountByUnit", { unit: UNIDADES[unidad].label }));
       return;
     }
 
@@ -227,41 +229,41 @@ export function useSubasta(options = {}) {
       const tx = await contractRef.current.pujar({
         value: montoEnWei,
       });
-      mostrarMensaje("info", "Puja enviada. Esperando confirmacion...");
+      mostrarMensaje("info", t("subasta.bidSent"));
       await tx.wait();
       setMontoBNB("");
       await cargarEstado();
-      mostrarMensaje("success", "Puja registrada correctamente.");
+      mostrarMensaje("success", t("subasta.bidSuccess"));
     } catch (error) {
       console.error("Error al pujar:", error);
-      mostrarMensaje("danger", obtenerMensajeError(error, "Error al pujar."));
+      mostrarMensaje("danger", obtenerMensajeErrorTraducido(error, t, t("subasta.bidError")));
     }
   };
 
   const retirar = async () => {
     if (!contractRef.current) return;
     if (!finalizada) {
-      mostrarMensaje("warning", "La subasta aun no termina.");
+      mostrarMensaje("warning", t("subasta.auctionNotFinished"));
       return;
     }
     if (esOwner) {
-      mostrarMensaje("warning", "El vendedor no usa este boton. Debe retirar fondos del ganador.");
+      mostrarMensaje("warning", t("subasta.sellerUseWinnerWithdraw"));
       return;
     }
     if (Number(miPuja) <= 0) {
-      mostrarMensaje("warning", "No has pujado o ya retiraste tus fondos.");
+      mostrarMensaje("warning", t("subasta.noBidOrWithdrawn"));
       return;
     }
 
     try {
       const tx = await contractRef.current.retirarNoGanador();
-      mostrarMensaje("info", "Retirada enviada. Esperando confirmacion...");
+      mostrarMensaje("info", t("subasta.withdrawSent"));
       await tx.wait();
       await cargarEstado();
-      mostrarMensaje("success", "Fondos retirados correctamente.");
+      mostrarMensaje("success", t("subasta.withdrawSuccess"));
     } catch (error) {
       console.error("Error al retirar:", error);
-      mostrarMensaje("danger", obtenerMensajeError(error, "No se pudo retirar."));
+      mostrarMensaje("danger", obtenerMensajeErrorTraducido(error, t, t("subasta.withdrawError")));
     }
   };
 
@@ -271,10 +273,10 @@ export function useSubasta(options = {}) {
     try {
       const g = await contractRef.current.ganador();
       setGanador(g);
-      mostrarMensaje("success", "Ganador consultado correctamente.");
+      mostrarMensaje("success", t("subasta.winnerConsulted"));
     } catch (error) {
       console.error("Error al consultar ganador:", error);
-      mostrarMensaje("warning", obtenerMensajeError(error, "La subasta aun no ha terminado."));
+      mostrarMensaje("warning", obtenerMensajeErrorTraducido(error, t, t("subasta.winnerConsultError")));
     }
   };
 

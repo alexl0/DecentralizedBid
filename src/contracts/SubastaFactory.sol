@@ -4,14 +4,17 @@ pragma solidity ^0.8.10;
 import "./SubastaSimple.sol";
 
 contract SubastaFactory {
+    error ProductoInvalido();
+    error DuracionInvalida();
+
     address[] private subastas;
     mapping(address => address[]) private subastasPorOwner;
 
     event SubastaCreada(address indexed owner, address indexed subasta, string producto, uint256 duracionMinutos);
 
     function crearSubasta(string memory _producto, uint256 _duracionMinutos) external returns (address) {
-        require(bytes(_producto).length > 0, "Producto invalido");
-        require(_duracionMinutos > 0, "Duracion invalida");
+        if (bytes(_producto).length == 0) revert ProductoInvalido();
+        if (_duracionMinutos == 0) revert DuracionInvalida();
 
         SubastaSimple subasta = new SubastaSimple(msg.sender, _producto, _duracionMinutos);
         address subastaAddress = address(subasta);
