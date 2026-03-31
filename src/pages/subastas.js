@@ -57,7 +57,36 @@ export default function SubastasHubPage() {
     return new ethers.providers.Web3Provider(provider);
   };
 
-  const cargarResumenSubastas = async (addresses, account, providerLectura) => {
+  const obtenerBloquesCreacion = async (addresses) => {
+    if (addresses.length === 0) return {};
+
+    const fromBlock = FACTORY_DEPLOY_BLOCK > 0 ? FACTORY_DEPLOY_BLOCK : 0;
+    const providerRpc = new ethers.providers.JsonRpcProvider(EVENTS_RPC_URL);
+    const iface = new ethers.utils.Interface(FACTORY_ABI);
+    const topic0 = ethers.utils.id("SubastaCreada(address,address,string,uint256)");
+
+    const logs = await providerRpc.getLogs({
+      address: FACTORY_ADDRESS,
+      fromBlock,
+      toBlock: "latest",
+      topics: [topic0],
+    });
+
+    const wanted = new Set(addresses.map((a) => a.toLowerCase()));
+    const map = {};
+
+    for (const log of logs) {
+      const parsed = iface.parseLog(log);
+      const subastaAddr = parsed.args.subasta.toLowerCase();
+      if (wanted.has(subastaAddr)) {
+        map[subastaAddr] = log.blockNumber;
+      }
+    }
+
+    return map;
+  };
+
+  const cargarResumenSubastas = async (addresses, account, providerLectura, creationBlocks = {}) => {
     const resumenes = await Promise.all(
       addresses.map(async (address) => {
         try {
@@ -79,6 +108,7 @@ export default function SubastasHubPage() {
             highestBid: ethers.utils.formatEther(highestBid),
             finalizada,
             miPuja: ethers.utils.formatEther(miPuja),
+            deployBlock: creationBlocks[address.toLowerCase()] || 0,
           };
         } catch {
           return null;
@@ -129,14 +159,22 @@ export default function SubastasHubPage() {
         factory.getSubastasPorOwner(account),
       ]);
 
+      // El bloque es para no tener que escanear toda la blockchain. Se escanea a partir de ese bloque.
+      const creationBlocks = await obtenerBloquesCreacion(allAddresses);
+
       const providerLectura = new ethers.providers.JsonRpcProvider(EVENTS_RPC_URL);
       const [allDetails, myDetails, participandoAddresses] = await Promise.all([
-        cargarResumenSubastas(allAddresses, account, providerLectura),
-        cargarResumenSubastas(myAddresses, account, providerLectura),
+        cargarResumenSubastas(allAddresses, account, providerLectura, creationBlocks),
+        cargarResumenSubastas(myAddresses, account, providerLectura, creationBlocks),
         cargarParticipando(allAddresses, account),
       ]);
 
-      const participandoDetails = await cargarResumenSubastas(participandoAddresses, account, providerLectura);
+      const participandoDetails = await cargarResumenSubastas(
+        participandoAddresses,
+        account,
+        providerLectura,
+        creationBlocks
+      );
 
       setTodas(allDetails);
       setMias(myDetails);
@@ -227,7 +265,7 @@ export default function SubastasHubPage() {
                     <td>
                       <Link
                         className="btn btn-outline-primary btn-sm"
-                        href={`/subasta?address=${s.address}`}
+                        href={`/subasta?address=${s.address}${s.deployBlock ? `&block=${s.deployBlock}` : ""}`}
                       >
                         Abrir
                       </Link>
