@@ -347,6 +347,10 @@ export function useSubasta(options = {}) {
 
   const consultarGanador = async () => {
     if (!contractRef.current) return;
+    if (!finalizada) {
+      mostrarMensaje("warning", t("subasta.winnerConsultError"));
+      return;
+    }
 
     try {
       const g = await contractRef.current.ganador();

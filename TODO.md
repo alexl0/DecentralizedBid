@@ -27,3 +27,6 @@ Hacer un workflow de trabajo con una vm y agentes claude que permita que tengan 
 ### Lo mejor
 - Lo mejor sería igual tener un nodo corriendo en la app, para no tener que estar todo el rato haciendo peticiones.
 
+## Cosas a corregir importantes
+Como ahora tenemos dos contratos, se gasta mucho gas. El coste de crear una subasta es muy elevado (0.0013).
+Habría que optimizar todo, y luego mostrar al usuario porcentajes de lo que se pierden en gas con respecto a los importes pujados y tal.

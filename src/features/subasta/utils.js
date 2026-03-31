@@ -34,11 +34,12 @@ export const obtenerMensajeError = (error, fallback) => {
 
 export const obtenerCodigoErrorBlockchain = (error) => {
   const code = error?.errorName || error?.error?.errorName;
-  if (code) return code;
+  if (code && code !== "Error") return code;
 
   const reason = error?.reason || error?.error?.message || error?.data?.message || error?.message || "";
   const match = reason.match(/([A-Za-z_][A-Za-z0-9_]*)\(\)/);
-  return match ? match[1] : null;
+  if (!match) return null;
+  return match[1] === "Error" ? null : match[1];
 };
 
 export const obtenerMensajeErrorTraducido = (error, t, fallback) => {
