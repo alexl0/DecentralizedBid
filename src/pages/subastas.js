@@ -263,7 +263,7 @@ export default function SubastasHubPage() {
 
         {!factoryDisponible && (
           <Alert tipo="warning">
-            Falta configurar <strong>NEXT_PUBLIC_FACTORY_ADDRESS</strong> en .env.local para habilitar la creacion y listados.
+            Falta configurar <strong>NEXT_PUBLIC_FACTORY_ADDRESS</strong> en el entorno de build (por ejemplo, .env.local o .env.production) para habilitar la creacion y listados.
           </Alert>
         )}
 
