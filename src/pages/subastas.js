@@ -6,7 +6,6 @@ import {
   EVENTS_RPC_URL,
   FACTORY_ABI,
   FACTORY_ADDRESS,
-  FACTORY_DEPLOY_BLOCK,
   SUBASTA_ABI,
 } from "@/features/subasta/config";
 import { obtenerMensajeErrorTraducido } from "@/features/subasta/utils";
@@ -19,26 +18,6 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 function shortAddress(addr) {
   if (!addr || addr.length < 10) return "-";
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
-
-async function getLogsPorTramos(provider, filterBase, fromBlock) {
-  const ultimoBloque = await provider.getBlockNumber();
-  const TAMANO_TRAMO = 40000;
-  let desde = fromBlock;
-  let logs = [];
-
-  while (desde <= ultimoBloque) {
-    const hasta = Math.min(desde + TAMANO_TRAMO - 1, ultimoBloque);
-    const parte = await provider.getLogs({
-      ...filterBase,
-      fromBlock: desde,
-      toBlock: hasta,
-    });
-    logs = logs.concat(parte);
-    desde = hasta + 1;
-  }
-
-  return logs;
 }
 
 export default function SubastasHubPage() {
@@ -80,34 +59,7 @@ export default function SubastasHubPage() {
     return new ethers.providers.Web3Provider(provider);
   };
 
-  const obtenerBloquesCreacion = async (addresses) => {
-    if (addresses.length === 0) return {};
-
-    const fromBlock = FACTORY_DEPLOY_BLOCK > 0 ? FACTORY_DEPLOY_BLOCK : 0;
-    const providerRpc = new ethers.providers.JsonRpcProvider(EVENTS_RPC_URL);
-    const iface = new ethers.utils.Interface(FACTORY_ABI);
-    const topic0 = ethers.utils.id("SubastaCreada(address,address,string,uint256)");
-
-    const logs = await getLogsPorTramos(providerRpc, {
-      address: FACTORY_ADDRESS,
-      topics: [topic0],
-    }, fromBlock);
-
-    const wanted = new Set(addresses.map((a) => a.toLowerCase()));
-    const map = {};
-
-    for (const log of logs) {
-      const parsed = iface.parseLog(log);
-      const subastaAddr = parsed.args.subasta.toLowerCase();
-      if (wanted.has(subastaAddr)) {
-        map[subastaAddr] = log.blockNumber;
-      }
-    }
-
-    return map;
-  };
-
-  const cargarResumenSubastas = async (addresses, account, providerLectura, creationBlocks = {}) => {
+  const cargarResumenSubastas = async (addresses, account, providerLectura) => {
     const resumenes = await Promise.all(
       addresses.map(async (address) => {
         try {
@@ -129,7 +81,6 @@ export default function SubastasHubPage() {
             highestBid: ethers.utils.formatEther(highestBid),
             finalizada,
             miPuja: ethers.utils.formatEther(miPuja),
-            deployBlock: creationBlocks[address.toLowerCase()] || 0,
           };
         } catch {
           return null;
@@ -138,27 +89,6 @@ export default function SubastasHubPage() {
     );
 
     return resumenes.filter(Boolean);
-  };
-
-  const cargarParticipando = async (addresses, account) => {
-    if (!account || addresses.length === 0) return [];
-
-    const providerRpc = new ethers.providers.JsonRpcProvider(EVENTS_RPC_URL);
-    const topic0 = ethers.utils.id("NuevaPuja(address,uint256)");
-    const topicBidder = ethers.utils.hexZeroPad(account, 32);
-    const fromBlock = FACTORY_DEPLOY_BLOCK > 0 ? FACTORY_DEPLOY_BLOCK : 0;
-
-    const logsPorSubasta = await Promise.all(
-      addresses.map(async (address) => {
-        const logs = await getLogsPorTramos(providerRpc, {
-          address,
-          topics: [topic0, topicBidder],
-        }, fromBlock);
-        return { address, logsCount: logs.length };
-      })
-    );
-
-    return logsPorSubasta.filter((x) => x.logsCount > 0).map((x) => x.address);
   };
 
   const cargarListados = async () => {
@@ -179,22 +109,14 @@ export default function SubastasHubPage() {
         factory.getSubastasPorOwner(account),
       ]);
 
-      // El bloque es para no tener que escanear toda la blockchain. Se escanea a partir de ese bloque.
-      const creationBlocks = await obtenerBloquesCreacion(allAddresses);
-
       const providerLectura = new ethers.providers.JsonRpcProvider(EVENTS_RPC_URL);
-      const [allDetails, myDetails, participandoAddresses] = await Promise.all([
-        cargarResumenSubastas(allAddresses, account, providerLectura, creationBlocks),
-        cargarResumenSubastas(myAddresses, account, providerLectura, creationBlocks),
-        cargarParticipando(allAddresses, account),
+      const [allDetails, myDetails] = await Promise.all([
+        cargarResumenSubastas(allAddresses, account, providerLectura),
+        cargarResumenSubastas(myAddresses, account, providerLectura),
       ]);
 
-      const participandoDetails = await cargarResumenSubastas(
-        participandoAddresses,
-        account,
-        providerLectura,
-        creationBlocks
-      );
+      // Participacion calculada sin logs: si mi puja es > 0 en la subasta.
+      const participandoDetails = allDetails.filter((s) => Number(s.miPuja) > 0);
 
       setTodas(allDetails);
       setMias(myDetails);
@@ -285,7 +207,7 @@ export default function SubastasHubPage() {
                     <td>
                       <Link
                         className="btn btn-outline-primary btn-sm"
-                        href={`/subasta?address=${s.address}${s.deployBlock ? `&block=${s.deployBlock}` : ""}`}
+                        href={`/subasta?address=${s.address}`}
                       >
                         {t("ui.open")}
                       </Link>

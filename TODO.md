@@ -19,4 +19,11 @@ Hacer un workflow de trabajo con una vm y agentes claude que permita que tengan 
 - Hacer menú para crear subasta. Y también, lista de mis subastas (creadas por mi) y lista de subastas en las que participo (como pujador)
 
 
+## De cara a futuro
+- Añadir caché. Para no tener que cargar los bloques desde NEXT_PUBLIC_FACTORY_DEPLOY_BLOCK hasta latest todo el rato.
+- Guardar último bloque sincronizado y hacer solo "incremental sync".
+- O montar backend indexador (The Graph / servicio propio).
+
+### Lo mejor
+- Lo mejor sería igual tener un nodo corriendo en la app, para no tener que estar todo el rato haciendo peticiones.
 

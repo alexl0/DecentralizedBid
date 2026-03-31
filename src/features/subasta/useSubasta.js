@@ -14,6 +14,7 @@ import { useI18n } from "@/i18n/provider";
 export function useSubasta(options = {}) {
   const { t } = useI18n();
   const contractRef = useRef(null);
+  const creationBlockCacheRef = useRef(new Map());
   const contractAddress = options.contractAddress || CONTRACT_ADDRESS;
   const deployBlockOverride = Number(options.deployBlock || 0);
 
@@ -45,37 +46,109 @@ export function useSubasta(options = {}) {
     if (normalizado !== null) setMontoBNB(normalizado);
   };
 
+  const resolverBloqueInicioHistorial = async (provider) => {
+    if (Number.isFinite(deployBlockOverride) && deployBlockOverride > 0) {
+      return deployBlockOverride;
+    }
+
+    const configuredBlock = Number(process.env.NEXT_PUBLIC_CONTRACT_DEPLOY_BLOCK || 0);
+    if (Number.isFinite(configuredBlock) && configuredBlock > 0) {
+      return configuredBlock;
+    }
+
+    const factoryBlock = Number(process.env.NEXT_PUBLIC_FACTORY_DEPLOY_BLOCK || 0);
+
+    const cacheKey = (contractAddress || "").toLowerCase();
+    if (creationBlockCacheRef.current.has(cacheKey)) {
+      return creationBlockCacheRef.current.get(cacheKey);
+    }
+
+    if (typeof window !== "undefined" && cacheKey) {
+      const local = window.localStorage.getItem(`creation_block_${cacheKey}`);
+      const parsed = Number(local);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        creationBlockCacheRef.current.set(cacheKey, parsed);
+        return parsed;
+      }
+    }
+
+    try {
+      const latest = await provider.getBlockNumber();
+      const codeAtLatest = await provider.getCode(contractAddress, latest);
+      if (!codeAtLatest || codeAtLatest === "0x") return 0;
+
+      let low = 0;
+      let high = latest;
+      while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        const code = await provider.getCode(contractAddress, mid);
+        if (code && code !== "0x") {
+          high = mid;
+        } else {
+          low = mid + 1;
+        }
+      }
+
+      if (cacheKey) {
+        creationBlockCacheRef.current.set(cacheKey, low);
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(`creation_block_${cacheKey}`, String(low));
+        }
+      }
+
+      return low;
+    } catch {
+      if (Number.isFinite(factoryBlock) && factoryBlock > 0) {
+        return factoryBlock;
+      }
+      return 0;
+    }
+  };
+
   const cargarHistorialPujas = async () => {
     if (!contractRef.current) return;
 
     try {
       setCargandoPujas(true);
-      const configuredBlock = Number(process.env.NEXT_PUBLIC_CONTRACT_DEPLOY_BLOCK || 0);
-      const bloqueInicio = Number.isFinite(deployBlockOverride) && deployBlockOverride > 0
-        ? deployBlockOverride
-        : Number.isFinite(configuredBlock) && configuredBlock >= 0
-          ? configuredBlock
-          : 0;
       const topic0 = ethers.utils.id("NuevaPuja(address,uint256)");
 
       const provider = new ethers.providers.JsonRpcProvider(EVENTS_RPC_URL);
       const ultimoBloque = await provider.getBlockNumber();
       const interfaz = new ethers.utils.Interface(["event NuevaPuja(address indexed bidder, uint256 amount)"]);
-
       const TAMANO_TRAMO = 3000;
-      let desde = bloqueInicio;
-      let logs = [];
 
-      while (desde <= ultimoBloque) {
-        const hasta = Math.min(desde + TAMANO_TRAMO - 1, ultimoBloque);
-        const lote = await provider.getLogs({
-          address: contractAddress,
-          fromBlock: desde,
-          toBlock: hasta,
-          topics: [topic0],
-        });
-        logs = logs.concat(lote);
-        desde = hasta + 1;
+      const cargarLogsDesde = async (bloqueInicio) => {
+        let desde = bloqueInicio;
+        let logs = [];
+
+        while (desde <= ultimoBloque) {
+          const hasta = Math.min(desde + TAMANO_TRAMO - 1, ultimoBloque);
+          const lote = await provider.getLogs({
+            address: contractAddress,
+            fromBlock: desde,
+            toBlock: hasta,
+            topics: [topic0],
+          });
+          logs = logs.concat(lote);
+          desde = hasta + 1;
+        }
+
+        return logs;
+      };
+
+      const bloqueInicio = await resolverBloqueInicioHistorial(provider);
+      let logs;
+      try {
+        logs = await cargarLogsDesde(bloqueInicio);
+      } catch (err) {
+        const code = err?.error?.code;
+        const msg = String(err?.error?.message || err?.message || "").toLowerCase();
+        const esPruning = code === -32701 || msg.includes("pruned") || msg.includes("history has been pruned");
+        if (!esPruning) throw err;
+
+        const inicioSeguro = Math.max(ultimoBloque - 49000, 0);
+        logs = await cargarLogsDesde(inicioSeguro);
+        mostrarMensaje("info", t("subasta.partialHistoryByRpc"));
       }
 
       const lista = logs
@@ -121,6 +194,11 @@ export function useSubasta(options = {}) {
       provider = new ethers.providers.Web3Provider(provider);
       const signer = provider.getSigner();
       if (!ethers.utils.isAddress(contractAddress)) {
+        mostrarMensaje("warning", t("subasta.invalidAddress"));
+        return null;
+      }
+      const code = await provider.getCode(contractAddress);
+      if (!code || code === "0x") {
         mostrarMensaje("warning", t("subasta.invalidAddress"));
         return null;
       }

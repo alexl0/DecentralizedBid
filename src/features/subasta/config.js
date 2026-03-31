@@ -8,8 +8,6 @@ export const FACTORY_ADDRESS =
 export const EVENTS_RPC_URL =
   process.env.NEXT_PUBLIC_EVENTS_RPC_URL || "https://bsc-testnet.publicnode.com";
 
-export const FACTORY_DEPLOY_BLOCK = Number(process.env.NEXT_PUBLIC_FACTORY_DEPLOY_BLOCK || 0);
-
 export const SUBASTA_ABI = [
   "function owner() view returns (address)",
   "function producto() view returns (string)",

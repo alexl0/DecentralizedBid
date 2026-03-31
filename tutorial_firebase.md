@@ -33,10 +33,14 @@ Recomendado para despliegue:
 
 ```dotenv
 NEXT_PUBLIC_CONTRACT_ADDRESS=0x...
-NEXT_PUBLIC_CONTRACT_DEPLOY_BLOCK=0
 NEXT_PUBLIC_EVENTS_RPC_URL=https://bsc-testnet.publicnode.com
 NEXT_PUBLIC_FACTORY_ADDRESS=0x...
-NEXT_PUBLIC_FACTORY_DEPLOY_BLOCK=0
+```
+
+Opcional para acelerar historial en `/subasta` cuando se abre por enlace directo:
+
+```dotenv
+NEXT_PUBLIC_CONTRACT_DEPLOY_BLOCK=0
 ```
 
 2. Ejecutar:
