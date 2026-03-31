@@ -21,6 +21,26 @@ function shortAddress(addr) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+async function getLogsPorTramos(provider, filterBase, fromBlock) {
+  const ultimoBloque = await provider.getBlockNumber();
+  const TAMANO_TRAMO = 40000;
+  let desde = fromBlock;
+  let logs = [];
+
+  while (desde <= ultimoBloque) {
+    const hasta = Math.min(desde + TAMANO_TRAMO - 1, ultimoBloque);
+    const parte = await provider.getLogs({
+      ...filterBase,
+      fromBlock: desde,
+      toBlock: hasta,
+    });
+    logs = logs.concat(parte);
+    desde = hasta + 1;
+  }
+
+  return logs;
+}
+
 export default function SubastasHubPage() {
   const { t } = useI18n();
   const [cuenta, setCuenta] = useState("");
@@ -68,12 +88,10 @@ export default function SubastasHubPage() {
     const iface = new ethers.utils.Interface(FACTORY_ABI);
     const topic0 = ethers.utils.id("SubastaCreada(address,address,string,uint256)");
 
-    const logs = await providerRpc.getLogs({
+    const logs = await getLogsPorTramos(providerRpc, {
       address: FACTORY_ADDRESS,
-      fromBlock,
-      toBlock: "latest",
       topics: [topic0],
-    });
+    }, fromBlock);
 
     const wanted = new Set(addresses.map((a) => a.toLowerCase()));
     const map = {};
@@ -128,15 +146,14 @@ export default function SubastasHubPage() {
     const providerRpc = new ethers.providers.JsonRpcProvider(EVENTS_RPC_URL);
     const topic0 = ethers.utils.id("NuevaPuja(address,uint256)");
     const topicBidder = ethers.utils.hexZeroPad(account, 32);
+    const fromBlock = FACTORY_DEPLOY_BLOCK > 0 ? FACTORY_DEPLOY_BLOCK : 0;
 
     const logsPorSubasta = await Promise.all(
       addresses.map(async (address) => {
-        const logs = await providerRpc.getLogs({
+        const logs = await getLogsPorTramos(providerRpc, {
           address,
-          fromBlock: FACTORY_DEPLOY_BLOCK > 0 ? FACTORY_DEPLOY_BLOCK : 0,
-          toBlock: "latest",
           topics: [topic0, topicBidder],
-        });
+        }, fromBlock);
         return { address, logsCount: logs.length };
       })
     );
