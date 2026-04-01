@@ -7,7 +7,7 @@ export const limpiarMensajeRevert = (rawMessage) => {
   parte = parte.trim();
   parte = parte.replace(/: 0x[0-9a-fA-F]+$/, "").trim();
 
-  if (!parte) return "Transaccion revertida";
+  if (!parte) return "Transacción revertida";
   return parte.startsWith("Error:") ? parte : `Error: ${parte}`;
 };
 
