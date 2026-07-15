@@ -65,6 +65,8 @@ export const messages = {
       noBidsYet: "Aún no hay pujas registradas.",
       address: "Dirección",
       amountBnb: "Importe (BNB)",
+      footerRepo: "Este es un proyecto de código abierto. Puedes encontrar el código en <a href=\"https://github.com/alexl0/DecentralizedBid\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a>.",
+      footerBsc: "Esta aplicación funciona con MetaMask en la red de testnet de BSC."
     },
     errors: {
       OwnerInvalido: "Owner inválido.",
@@ -190,6 +192,8 @@ export const messages = {
       noBidsYet: "No bids registered yet.",
       address: "Address",
       amountBnb: "Amount (BNB)",
+      footerRepo: "This is an open source project. You can find the code on <a href=\"https://github.com/alexl0/DecentralizedBid\" target=\"_blank\" rel=\"noopener noreferrer\">GitHub</a>.",
+      footerBsc: "This application works with MetaMask on the BSC testnet."
     },
     errors: {
       OwnerInvalido: "Invalid owner.",
